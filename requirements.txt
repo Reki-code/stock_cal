@@ -1,0 +1,11 @@
+# Python dependencies for the stock trading analyzer
+
+numpy
+pandas
+matplotlib
+scikit-learn
+requests
+
+# Optional dependencies
+TA-Lib
+\n# Add any additional dependencies here
