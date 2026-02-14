@@ -48,6 +48,10 @@ class FIFOAnalyzer:
 
     def ingest_dividends(self, dividends: list[dict[str, Any]]) -> None:
         for div in dividends:
+            currency = div.get('Currency', '')
+            if 'Total' in currency or 'Total' in str(div.get('Description', '')):
+                continue
+
             date_str = div.get('Date')
             if date_str:
                 try:
@@ -73,7 +77,12 @@ class FIFOAnalyzer:
             ))
 
     def ingest_withholdings(self, withholdings: list[dict[str, Any]]) -> None:
-        self._withholdings = withholdings
+        filtered = []
+        for wh in withholdings:
+            if 'Total' in str(wh.get('Description', '')) or not wh.get('Description'):
+                continue
+            filtered.append(wh)
+        self._withholdings = filtered
 
     def _process_trade(self, trade: dict[str, Any]) -> None:
         asset_category = trade.get('Asset Category', '')
@@ -97,6 +106,8 @@ class FIFOAnalyzer:
             commission = Decimal('0')
         elif isinstance(commission, str):
             commission = Decimal(commission.replace(',', ''))
+        elif isinstance(commission, Decimal):
+            commission = commission
 
         date = trade.get('DateTime')
         if date is None:
@@ -105,16 +116,16 @@ class FIFOAnalyzer:
         if quantity > 0:
             lot = Lot(
                 symbol=symbol,
-                quantity=abs(quantity),
-                price=abs(price),
+                quantity=quantity,
+                price=price,
                 date=date,
-                commission=commission
+                commission=abs(commission)
             )
             self._lots[symbol].append(lot)
             self._lots[symbol].sort(key=lambda x: x.date)
 
         elif quantity < 0:
-            self._match_sell(symbol, abs(quantity), abs(price), date, commission, trade)
+            self._match_sell(symbol, abs(quantity), price, date, abs(commission), trade)
 
     def _match_sell(self, symbol: str, quantity: Decimal, price: Decimal,
                     date: datetime, commission: Decimal, trade: dict) -> None:
