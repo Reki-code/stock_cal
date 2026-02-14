@@ -47,7 +47,7 @@ def parse_ibkr_activity(csv_path: str) -> dict[str, list[dict[str, Any]]]:
                 header = [h.strip() for h in row[2:]]
                 continue
 
-            if first and second in ('Data', 'SubTotal', 'SubTotal,', 'SubTotal,,'):
+            if first and second in ('Data',):
                 values = row[2:]
                 if header is None:
                     continue
