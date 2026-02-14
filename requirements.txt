@@ -1,15 +1,2 @@
-# Python dependencies for the stock trading analyzer
-
-# Testing
+# Python dependencies
 pytest
-
-# Core dependencies
-numpy
-pandas
-matplotlib
-scikit-learn
-requests
-
-# Optional dependencies
-TA-Lib
-\n# Add any additional dependencies here
