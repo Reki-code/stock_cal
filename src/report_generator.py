@@ -25,12 +25,13 @@ def write_reports(report: dict[str, Any], out_dir: str = 'outputs') -> dict[str,
         gains_path = Path(out_dir) / 'realized_gains.csv'
         with open(gains_path, 'w', encoding='utf-8', newline='') as f:
             if realized_gains:
-                fieldnames = ['symbol', 'quantity', 'sell_date', 'proceeds', 'cost_basis', 'gain_loss']
+                fieldnames = ['symbol', 'currency', 'quantity', 'sell_date', 'proceeds', 'cost_basis', 'gain_loss']
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 for row in realized_gains:
                     writer.writerow({
                         'symbol': row.get('symbol', ''),
+                        'currency': row.get('currency', ''),
                         'quantity': row.get('quantity', ''),
                         'sell_date': row.get('sell_date', ''),
                         'proceeds': _format_decimal(row.get('proceeds', '0')),
@@ -78,16 +79,21 @@ def write_reports(report: dict[str, Any], out_dir: str = 'outputs') -> dict[str,
     if summary:
         summary_path = Path(out_dir) / 'summary.csv'
         with open(summary_path, 'w', encoding='utf-8', newline='') as f:
-            fieldnames = ['year', 'short_term_gain', 'long_term_gain', 'total_gain']
+            fieldnames = ['year', 'currency', 'short_term_gain', 'long_term_gain', 'total_gain', 'dividend_gross', 'dividend_withholding', 'dividend_net']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            for year, data in sorted(summary.items()):
-                writer.writerow({
-                    'year': year,
-                    'short_term_gain': _format_decimal(data.get('short_term_gain', '0')),
-                    'long_term_gain': _format_decimal(data.get('long_term_gain', '0')),
-                    'total_gain': _format_decimal(data.get('total_gain', '0'))
-                })
+            for year, currencies in sorted(summary.items()):
+                for currency, data in currencies.items():
+                    writer.writerow({
+                        'year': year,
+                        'currency': currency,
+                        'short_term_gain': _format_decimal(data.get('short_term_gain', '0')),
+                        'long_term_gain': _format_decimal(data.get('long_term_gain', '0')),
+                        'total_gain': _format_decimal(data.get('total_gain', '0')),
+                        'dividend_gross': _format_decimal(data.get('dividend_gross', '0')),
+                        'dividend_withholding': _format_decimal(data.get('dividend_withholding', '0')),
+                        'dividend_net': _format_decimal(data.get('dividend_net', '0'))
+                    })
         result['summary'] = str(summary_path)
 
     return result

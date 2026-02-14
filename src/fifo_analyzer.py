@@ -18,6 +18,7 @@ class Lot:
 class SellMatch:
     sell_date: datetime
     symbol: str
+    currency: str
     quantity: Decimal
     proceeds: Decimal
     cost_basis: Decimal
@@ -143,10 +144,11 @@ class FIFOAnalyzer:
             self._lots[symbol].sort(key=lambda x: x.date)
 
         elif quantity < 0:
-            self._match_sell(symbol, abs(quantity), price, date, abs(commission), trade)
+            currency = trade.get('Currency', 'USD')
+            self._match_sell(symbol, abs(quantity), price, date, abs(commission), trade, currency)
 
     def _match_sell(self, symbol: str, quantity: Decimal, price: Decimal,
-                    date: datetime, commission: Decimal, trade: dict) -> None:
+                    date: datetime, commission: Decimal, trade: dict, currency: str) -> None:
         proceeds = quantity * price - commission
         cost_basis = Decimal('0')
         remaining = quantity
@@ -181,6 +183,7 @@ class FIFOAnalyzer:
             self._sell_matches.append(SellMatch(
                 sell_date=date,
                 symbol=symbol,
+                currency=currency,
                 quantity=quantity,
                 proceeds=proceeds,
                 cost_basis=cost_basis,
@@ -204,16 +207,19 @@ class FIFOAnalyzer:
             'summary': {}
         }
 
-        gains_by_year = defaultdict(lambda: {'short_term': Decimal('0'), 'long_term': Decimal('0')})
+        gains_by_year_currency = defaultdict(lambda: {'short_term': Decimal('0'), 'long_term': Decimal('0'), 'currency': ''})
         for match in self._sell_matches:
             year = match.sell_date.year
+            key = (year, match.currency)
+            gains_by_year_currency[key]['currency'] = match.currency
             if (match.sell_date - self._find_purchase_date(match.symbol)).days > 365:
-                gains_by_year[year]['long_term'] += match.gain_loss
+                gains_by_year_currency[key]['long_term'] += match.gain_loss
             else:
-                gains_by_year[year]['short_term'] += match.gain_loss
+                gains_by_year_currency[key]['short_term'] += match.gain_loss
 
             report['realized_gains'].append({
                 'symbol': match.symbol,
+                'currency': match.currency,
                 'quantity': str(match.quantity),
                 'sell_date': match.sell_date.isoformat(),
                 'proceeds': str(match.proceeds),
@@ -221,8 +227,14 @@ class FIFOAnalyzer:
                 'gain_loss': str(match.gain_loss)
             })
 
+        dividends_by_year_currency = defaultdict(lambda: {'gross': Decimal('0'), 'withholding': Decimal('0'), 'net': Decimal('0'), 'currency': ''})
         for div in self._dividends:
             year = div.date.year
+            key = (year, div.currency)
+            dividends_by_year_currency[key]['currency'] = div.currency
+            dividends_by_year_currency[key]['gross'] += div.amount
+            dividends_by_year_currency[key]['withholding'] += div.withholding
+            dividends_by_year_currency[key]['net'] += div.net_amount
             report['dividends'].append({
                 'symbol': div.symbol,
                 'date': div.date.isoformat(),
@@ -243,13 +255,29 @@ class FIFOAnalyzer:
                 'amount': str(amount) if amount else '0'
             })
 
-        for year, gains in gains_by_year.items():
+        for (year, currency), gains in gains_by_year_currency.items():
             total = gains['short_term'] + gains['long_term']
-            report['summary'][str(year)] = {
+            if str(year) not in report['summary']:
+                report['summary'][str(year)] = {}
+            report['summary'][str(year)][currency] = {
                 'short_term_gain': str(gains['short_term']),
                 'long_term_gain': str(gains['long_term']),
-                'total_gain': str(total)
+                'total_gain': str(total),
+                'currency': currency
             }
+
+        for (year, currency), divs in dividends_by_year_currency.items():
+            if str(year) not in report['summary']:
+                report['summary'][str(year)] = {}
+            report['summary'][str(year)][currency] = report['summary'][str(year)].get(currency, {
+                'short_term_gain': '0',
+                'long_term_gain': '0',
+                'total_gain': '0',
+                'currency': currency
+            })
+            report['summary'][str(year)][currency]['dividend_gross'] = str(divs['gross'])
+            report['summary'][str(year)][currency]['dividend_withholding'] = str(divs['withholding'])
+            report['summary'][str(year)][currency]['dividend_net'] = str(divs['net'])
 
         return report
 
