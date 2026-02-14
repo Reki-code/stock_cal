@@ -1,5 +1,9 @@
 # Python dependencies for the stock trading analyzer
 
+# Testing
+pytest
+
+# Core dependencies
 numpy
 pandas
 matplotlib

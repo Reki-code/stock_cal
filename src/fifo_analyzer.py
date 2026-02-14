@@ -162,9 +162,10 @@ class FIFOAnalyzer:
                 remaining -= lot.quantity
                 lots.pop(0)
             else:
-                cost_basis += remaining * lot.price + (remaining / lot.quantity * lot.commission)
+                ratio = Decimal(remaining) / Decimal(lot.quantity)
+                cost_basis += remaining * lot.price + ratio * lot.commission
                 lot.quantity -= remaining
-                lot.commission -= remaining / lot.quantity * lot.commission
+                lot.commission -= ratio * lot.commission
                 remaining = Decimal('0')
 
         gain_loss = proceeds - cost_basis
