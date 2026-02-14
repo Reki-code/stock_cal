@@ -3,10 +3,6 @@ from pathlib import Path
 from typing import Any
 
 
-def generate_annual_income_report(year):
-    pass
-
-
 def _format_decimal(value: str) -> str:
     try:
         num = float(value)
