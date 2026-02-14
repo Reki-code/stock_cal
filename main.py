@@ -27,8 +27,8 @@ def run(csv_path, out_dir='outputs'):
 
     analyzer = FIFOAnalyzer()
     analyzer.ingest_trades(trades)
-    analyzer.ingest_dividends(dividends)
     analyzer.ingest_withholdings(withholdings)
+    analyzer.ingest_dividends(dividends)
 
     report = analyzer.annual_report()
     out = write_reports(report, out_dir=out_dir)

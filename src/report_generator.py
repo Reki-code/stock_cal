@@ -44,7 +44,7 @@ def write_reports(report: dict[str, Any], out_dir: str = 'outputs') -> dict[str,
         div_path = Path(out_dir) / 'dividends.csv'
         with open(div_path, 'w', encoding='utf-8', newline='') as f:
             if dividends:
-                fieldnames = ['symbol', 'date', 'currency', 'amount']
+                fieldnames = ['symbol', 'date', 'currency', 'amount', 'withholding', 'net_amount']
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 for row in dividends:
@@ -52,7 +52,9 @@ def write_reports(report: dict[str, Any], out_dir: str = 'outputs') -> dict[str,
                         'symbol': row.get('symbol', ''),
                         'date': row.get('date', ''),
                         'currency': row.get('currency', ''),
-                        'amount': _format_decimal(row.get('amount', '0'))
+                        'amount': _format_decimal(row.get('amount', '0')),
+                        'withholding': _format_decimal(row.get('withholding', '0')),
+                        'net_amount': _format_decimal(row.get('net_amount', '0'))
                     })
         result['dividends'] = str(div_path)
 

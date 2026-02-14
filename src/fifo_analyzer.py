@@ -32,6 +32,7 @@ class DividendRecord:
     currency: str
     amount: Decimal
     withholding: Decimal = Decimal('0')
+    net_amount: Decimal = Decimal('0')
 
 
 class FIFOAnalyzer:
@@ -69,11 +70,16 @@ class FIFOAnalyzer:
             elif amount is None:
                 amount = Decimal('0')
 
+            withholding = self._match_withholding(symbol, date_str)
+            net_amount = amount + withholding
+
             self._dividends.append(DividendRecord(
                 date=date,
                 symbol=symbol,
                 currency=div.get('Currency', 'USD'),
-                amount=amount
+                amount=amount,
+                withholding=withholding,
+                net_amount=net_amount
             ))
 
     def ingest_withholdings(self, withholdings: list[dict[str, Any]]) -> None:
@@ -83,6 +89,18 @@ class FIFOAnalyzer:
                 continue
             filtered.append(wh)
         self._withholdings = filtered
+
+    def _match_withholding(self, symbol: str, date_str: str) -> Decimal:
+        for wh in self._withholdings:
+            wh_desc = str(wh.get('Description', ''))
+            wh_date = str(wh.get('Date', ''))
+            if symbol in wh_desc and wh_date == date_str:
+                amount = wh.get('Amount')
+                if isinstance(amount, str):
+                    return Decimal(amount.replace(',', ''))
+                elif amount is not None:
+                    return Decimal(str(amount))
+        return Decimal('0')
 
     def _process_trade(self, trade: dict[str, Any]) -> None:
         asset_category = trade.get('Asset Category', '')
@@ -209,7 +227,9 @@ class FIFOAnalyzer:
                 'symbol': div.symbol,
                 'date': div.date.isoformat(),
                 'currency': div.currency,
-                'amount': str(div.amount)
+                'amount': str(div.amount),
+                'withholding': str(div.withholding),
+                'net_amount': str(div.net_amount)
             })
 
         for wh in self._withholdings:
