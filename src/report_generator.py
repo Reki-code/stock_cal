@@ -71,6 +71,26 @@ def write_reports(report: dict[str, Any], out_dir: str = 'outputs') -> dict[str,
                     })
         result['withholdings'] = str(wh_path)
 
+    cash_flows = report.get('cash_flows', [])
+    if cash_flows:
+        cf_path = Path(out_dir) / 'cash_flows.csv'
+        with open(cf_path, 'w', encoding='utf-8', newline='') as f:
+            fieldnames = ['date', 'symbol', 'currency', 'action', 'quantity', 'price', 'commission', 'amount']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for row in cash_flows:
+                writer.writerow({
+                    'date': row.get('date', ''),
+                    'symbol': row.get('symbol', ''),
+                    'currency': row.get('currency', ''),
+                    'action': row.get('action', ''),
+                    'quantity': row.get('quantity', ''),
+                    'price': _format_decimal(row.get('price', '0')),
+                    'commission': _format_decimal(row.get('commission', '0')),
+                    'amount': _format_decimal(row.get('amount', '0'))
+                })
+        result['cash_flows'] = str(cf_path)
+
     summary = report.get('summary', {})
     if summary:
         summary_path = Path(out_dir) / 'summary.csv'

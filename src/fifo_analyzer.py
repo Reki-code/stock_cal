@@ -36,12 +36,25 @@ class DividendRecord:
     net_amount: Decimal = Decimal('0')
 
 
+@dataclass
+class CashFlowRecord:
+    date: datetime
+    symbol: str
+    currency: str
+    action: str
+    quantity: Decimal
+    price: Decimal
+    commission: Decimal
+    amount: Decimal
+
+
 class FIFOAnalyzer:
     def __init__(self):
         self._lots: dict[str, list[Lot]] = defaultdict(list)
         self._dividends: list[DividendRecord] = []
         self._withholdings: list[dict] = []
         self._sell_matches: list[SellMatch] = []
+        self._cash_flows: list[CashFlowRecord] = []
         self.unmatched_sells: list[dict] = []
 
     def ingest_trades(self, trades: list[dict[str, Any]]) -> None:
@@ -133,6 +146,17 @@ class FIFOAnalyzer:
             return
 
         if quantity > 0:
+            currency = trade.get('Currency', 'USD')
+            self._cash_flows.append(CashFlowRecord(
+                date=date,
+                symbol=symbol,
+                currency=currency,
+                action='BUY',
+                quantity=quantity,
+                price=price,
+                commission=abs(commission),
+                amount=-(quantity * price + abs(commission))
+            ))
             lot = Lot(
                 symbol=symbol,
                 quantity=quantity,
@@ -145,6 +169,16 @@ class FIFOAnalyzer:
 
         elif quantity < 0:
             currency = trade.get('Currency', 'USD')
+            self._cash_flows.append(CashFlowRecord(
+                date=date,
+                symbol=symbol,
+                currency=currency,
+                action='SELL',
+                quantity=quantity,
+                price=price,
+                commission=abs(commission),
+                amount=quantity * price - abs(commission)
+            ))
             self._match_sell(symbol, abs(quantity), price, date, abs(commission), trade, currency)
 
     def _match_sell(self, symbol: str, quantity: Decimal, price: Decimal,
@@ -205,6 +239,7 @@ class FIFOAnalyzer:
             'realized_gains': [],
             'dividends': [],
             'withholdings': [],
+            'cash_flows': [],
             'summary': {}
         }
 
@@ -279,6 +314,18 @@ class FIFOAnalyzer:
             report['summary'][str(year)][currency]['dividend_gross'] = str(divs['gross'])
             report['summary'][str(year)][currency]['dividend_withholding'] = str(divs['withholding'])
             report['summary'][str(year)][currency]['dividend_net'] = str(divs['net'])
+
+        for cf in self._cash_flows:
+            report['cash_flows'].append({
+                'date': cf.date.isoformat(),
+                'symbol': cf.symbol,
+                'currency': cf.currency,
+                'action': cf.action,
+                'quantity': str(cf.quantity),
+                'price': str(cf.price),
+                'commission': str(cf.commission),
+                'amount': str(cf.amount)
+            })
 
         return report
 
